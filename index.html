@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SFS Apps</title>
+<meta name="theme-color" content="#01040a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SFS Apps">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root { --bg:#01040a; --card:#0d1424; --line:#1f2a44; --gold:#d6b260; --text:#eef1f7; --muted:#8f9bb5; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+         min-height:100vh; padding:max(24px,env(safe-area-inset-top)) 16px 32px; }
+  .wrap { max-width:520px; margin:0 auto; }
+  header { text-align:center; margin-bottom:28px; }
+  header img { width:120px; height:120px; border-radius:26px; box-shadow:0 8px 30px rgba(214,178,96,.18); }
+  header h1 { font-size:22px; margin-top:14px; letter-spacing:.5px; }
+  header p { color:var(--muted); font-size:14px; margin-top:4px; }
+  .apps { display:grid; gap:12px; }
+  a.app { display:flex; align-items:center; gap:14px; padding:16px; border-radius:16px; text-decoration:none; color:inherit;
+          background:var(--card); border:1px solid var(--line); transition:border-color .15s, transform .1s; }
+  a.app:hover { border-color:var(--gold); }
+  a.app:active { transform:scale(.98); }
+  .ico { width:48px; height:48px; flex:none; border-radius:12px; display:grid; place-items:center; font-size:24px;
+         background:linear-gradient(135deg,#2a2210,#4a3a14); border:1px solid #6b5520; }
+  .txt b { display:block; font-size:16px; }
+  .txt span { color:var(--muted); font-size:13px; }
+  .arrow { margin-left:auto; color:var(--gold); font-size:20px; }
+  .soon { opacity:.45; pointer-events:none; }
+  #install { display:none; width:100%; margin-top:22px; padding:14px; border-radius:14px; border:0; font-size:15px; font-weight:600;
+             background:var(--gold); color:#1a1405; cursor:pointer; }
+  footer { text-align:center; color:var(--muted); font-size:12px; margin-top:28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="icons/icon-512.png" alt="SFS logo">
+    <h1>SFS INDUSTRIES</h1>
+    <p>Company apps</p>
+  </header>
+
+  <div class="apps" id="apps"></div>
+  <button id="install">Install SFS Apps on this device</button>
+  <footer>SFS INDUSTRIES LLC</footer>
+</div>
+
+<script>
+/* ====== EDIT ONLY THIS LIST ======
+   Paste each Apps Script web app link (the one ending in /exec).
+   To add the 3rd app later, copy one line and change it. */
+const APPS = [
+  { icon:"🕒", name:"SFS Attendance & Payroll", note:"Attendance, OT, salary, WPS",
+    url:"https://script.google.com/macros/s/AKfycbz0wrwakNc-49Y-X6OPXl0YIOZIIK02QpJYbM9whIkwhYjmeAGz_MWBxaetcphAWfNx/exec" },
+  { icon:"🏭", name:"Masdar Production Portal", note:"Production, stock & costing",
+    url:"https://script.google.com/macros/s/AKfycbyq-1PhmEobHlyT7blh3GSUTSIRLu14NT79NRLjwf52pJCLgv0Uv-K0lQeioOo9fNLWNw/exec" },
+  // { icon:"📦", name:"Third App", note:"Coming soon", url:"" },
+];
+/* ================================= */
+
+const box = document.getElementById('apps');
+APPS.forEach(a => {
+  const ready = a.url && a.url.startsWith('http');
+  const el = document.createElement('a');
+  el.className = 'app' + (ready ? '' : ' soon');
+  el.href = ready ? a.url : '#';
+  el.innerHTML = `<div class="ico">${a.icon}</div>
+    <div class="txt"><b>${a.name}</b><span>${ready ? a.note : 'Link not added yet'}</span></div>
+    <div class="arrow">›</div>`;
+  box.appendChild(el);
+});
+
+// Install button (Android / Chrome / Edge on desktop)
+let deferred;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferred = e;
+  document.getElementById('install').style.display = 'block';
+});
+document.getElementById('install').onclick = async () => {
+  if (!deferred) return;
+  deferred.prompt(); await deferred.userChoice; deferred = null;
+  document.getElementById('install').style.display = 'none';
+};
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
