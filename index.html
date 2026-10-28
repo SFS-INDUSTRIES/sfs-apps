@@ -69,6 +69,7 @@ APPS.forEach(a => {
   const el = document.createElement('a');
   el.className = 'app' + (ready ? '' : ' soon');
   el.href = ready ? a.url : '#';
+  if (ready) { el.target = '_blank'; el.rel = 'noopener'; }
   el.innerHTML = `<div class="ico">${a.icon}</div>
     <div class="txt"><b>${a.name}</b><span>${ready ? a.note : 'Link not added yet'}</span></div>
     <div class="arrow">›</div>`;
