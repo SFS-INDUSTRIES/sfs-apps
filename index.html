@@ -492,7 +492,7 @@ footer svg{width:12px;height:12px;stroke:var(--ok);fill:none;stroke-width:2;vert
 </div>
 
 <script>
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.1.1';
 /* Link of the "SFS Apps – Config" Apps Script (Deploy → Web app URL, ends in /exec).
    When it is set, the app list comes from that Google Sheet and the admin can edit it from the launcher. */
 const CONFIG_URL = 'https://script.google.com/macros/s/AKfycbyXI1kXM1-8VJz5PBv9P8D-WuCnj_BDe-SruwpYqH1PdJ2gplOi1T-b1vB7KzIxHBYU/exec';
@@ -694,7 +694,7 @@ function openApp(a){
   const vi = document.getElementById('vicon');
   vi.innerHTML = ICONS[a.icon] || ICONS.module;
   vi.style.setProperty('--c1', a.c1 || 'var(--acc)'); vi.style.setProperty('--c2', a.c2 || 'var(--acc-deep)');
-  Object.values(viewer.frames).forEach(f => f.classList.remove('on'));
+  dropFrames_(a.url);   // v3.1.1: close any other app first
   let f = viewer.frames[a.url];
   if (!f) { f = makeFrame(a); loading(); }   // first time: create the frame
   else if (!f.dataset.ok) loading(); else loaded();   // v3.1: already open in the background → shows at once
@@ -704,10 +704,15 @@ function openApp(a){
   if (!ourEntry) { history.pushState({ sfsApp:1 }, ''); ourEntry = true; baseLen = history.length; }   // phone back button → home
   document.querySelector('meta[name=theme-color]').content = getComputedStyle(R).getPropertyValue('--sheet').trim() || '#111';
 }
-/* v3.1: an app's frame stays open in the background after Home, so opening it again is instant
-   (it keeps its screen and data). The last-used app is also opened quietly in the background
-   a moment after the launcher starts. */
+/* v3.1: the last app stays open in the background after Home, so opening it again is instant.
+   v3.1.1: only ONE app is ever open at a time. Two Google Apps Script apps open together in the
+   same page can block each other (the app froze when going A → B → A), so opening or touching
+   another app first closes the one in the background. */
+function dropFrames_(keepUrl){
+  Object.keys(viewer.frames).forEach(u => { if (u !== keepUrl) { viewer.frames[u].remove(); delete viewer.frames[u]; } });
+}
 function makeFrame(a){
+  dropFrames_(a.url);
   const f = document.createElement('iframe');
   f.src = a.url; f.title = a.name;
   f.allow = 'clipboard-read; clipboard-write; camera; microphone; geolocation; fullscreen';
@@ -746,6 +751,7 @@ function closeApp(dropFrames){
   if (dropFrames) Object.keys(viewer.frames).forEach(u => { viewer.frames[u].remove(); delete viewer.frames[u]; });
   Object.values(viewer.frames).forEach(f => f.classList.remove('on'));
   viewer.cur = null; clearTimeout(slowTimer); vload.classList.remove('on');
+  ourEntry = !!(history.state && history.state.sfsApp);   // v3.1.1: never keep a stale "inside app" step
   apply();
 }
 /* Home button: step back over our entry AND every page the app opened inside itself,
