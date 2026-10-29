@@ -487,7 +487,7 @@ footer svg{width:12px;height:12px;stroke:var(--ok);fill:none;stroke-width:2;vert
 </div>
 
 <script>
-const APP_VERSION = '3.0.1';
+const APP_VERSION = '3.0.2';
 /* Link of the "SFS Apps – Config" Apps Script (Deploy → Web app URL, ends in /exec).
    When it is set, the app list comes from that Google Sheet and the admin can edit it from the launcher. */
 const CONFIG_URL = 'https://script.google.com/macros/s/AKfycbyXI1kXM1-8VJz5PBv9P8D-WuCnj_BDe-SruwpYqH1PdJ2gplOi1T-b1vB7KzIxHBYU/exec';
@@ -676,6 +676,7 @@ document.getElementById('install').onclick = async () => { if (!deferred) return
    IN-APP VIEWER  (apps open inside, Home button + phone back button)
    ========================================================= */
 const viewer = { frames:{}, cur:null };
+let ourEntry = false, baseLen = 0;
 const vbody = document.getElementById('vbody'), vload = document.getElementById('vload'), vprog = document.getElementById('vprog');
 let slowTimer;
 function openApp(a){
@@ -698,7 +699,7 @@ function openApp(a){
   } else if (!f.dataset.ok) loading(); else loaded();
   f.classList.add('on');
   document.body.classList.add('viewing');
-  if (!history.state || !history.state.app) history.pushState({ app:1 }, '');
+  if (!ourEntry) { history.pushState({ sfsApp:1 }, ''); ourEntry = true; baseLen = history.length; }   // phone back button → home
   document.querySelector('meta[name=theme-color]').content = getComputedStyle(R).getPropertyValue('--sheet').trim() || '#111';
 }
 function loading(){
@@ -714,11 +715,26 @@ function loaded(){
 }
 function closeApp(){
   document.body.classList.remove('viewing');
-  viewer.cur = null; clearTimeout(slowTimer);
+  /* remove the app's frame: this also clears its back-history, so the phone's back button never
+     gets stuck moving a hidden app. The app opens fresh next time (its own saved login still works). */
+  Object.keys(viewer.frames).forEach(u => { viewer.frames[u].remove(); delete viewer.frames[u]; });
+  viewer.cur = null; clearTimeout(slowTimer); vload.classList.remove('on');
   apply();
 }
-document.getElementById('vback').onclick = () => { if (history.state && history.state.app) history.back(); else closeApp(); };
-addEventListener('popstate', () => { if (document.body.classList.contains('viewing')) closeApp(); });
+/* Home button: step back over our entry AND every page the app opened inside itself,
+   so no "ghost" back-steps are left behind. Fallback: close directly. */
+document.getElementById('vback').onclick = () => {
+  const n = ourEntry ? history.length - baseLen + 1 : 0;
+  if (n >= 1) {
+    history.go(-n);
+    setTimeout(() => { if (document.body.classList.contains('viewing')) closeApp(); }, 900);
+  } else closeApp();
+};
+/* Phone back button: when it reaches our entry, go home */
+addEventListener('popstate', () => {
+  ourEntry = !!(history.state && history.state.sfsApp);
+  if (!ourEntry && document.body.classList.contains('viewing')) closeApp();
+});
 document.getElementById('vreload').onclick = () => {
   const a = viewer.cur; if (!a) return;
   const f = viewer.frames[a.url]; delete f.dataset.ok; loading(); f.src = a.url;
