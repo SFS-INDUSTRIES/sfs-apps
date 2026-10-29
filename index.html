@@ -13,6 +13,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- v3.1: start the connection to Google Apps Script while the home screen draws -->
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<link rel="dns-prefetch" href="https://n-script.googleusercontent.com">
+<link rel="preconnect" href="https://ssl.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@500;600;700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
 /* apply saved look before the page draws (no flash) */
@@ -487,7 +492,7 @@ footer svg{width:12px;height:12px;stroke:var(--ok);fill:none;stroke-width:2;vert
 </div>
 
 <script>
-const APP_VERSION = '3.0.2';
+const APP_VERSION = '3.1.0';
 /* Link of the "SFS Apps – Config" Apps Script (Deploy → Web app URL, ends in /exec).
    When it is set, the app list comes from that Google Sheet and the admin can edit it from the launcher. */
 const CONFIG_URL = 'https://script.google.com/macros/s/AKfycbyXI1kXM1-8VJz5PBv9P8D-WuCnj_BDe-SruwpYqH1PdJ2gplOi1T-b1vB7KzIxHBYU/exec';
@@ -550,7 +555,10 @@ function render(){
     el.innerHTML = `<div class="ico">${ICONS[a.icon] || ICONS.module}</div>
       <div class="txt"><small>MODULE ${String(i+1).padStart(2,'0')}</small><b>${esc(a.name)}</b><span>${esc(a.note)}</span></div>
       <div class="end">${ready ? `<span class="live"><i></i>LIVE</span><span class="go">${ARROW}</span>` : '<span class="badge">SOON</span>'}</div>`;
-    if (ready) el.addEventListener('click', e => { e.preventDefault(); openApp(a); });
+    if (ready) {
+      el.addEventListener('click', e => { e.preventDefault(); openApp(a); });
+      el.addEventListener('pointerdown', () => preload(a), { passive: true });   // v3.1: start loading on touch
+    }
     else el.addEventListener('click', e => e.preventDefault());
     box.appendChild(el);
   });
@@ -688,20 +696,37 @@ function openApp(a){
   vi.style.setProperty('--c1', a.c1 || 'var(--acc)'); vi.style.setProperty('--c2', a.c2 || 'var(--acc-deep)');
   Object.values(viewer.frames).forEach(f => f.classList.remove('on'));
   let f = viewer.frames[a.url];
-  if (!f) {                         // first time: create the frame (kept alive so the app keeps its state)
-    f = document.createElement('iframe');
-    f.src = a.url; f.title = a.name;
-    f.allow = 'clipboard-read; clipboard-write; camera; microphone; geolocation; fullscreen';
-    f.referrerPolicy = 'no-referrer-when-downgrade';
-    f.addEventListener('load', () => { if (viewer.frames[viewer.cur && viewer.cur.url] === f) loaded(); f.dataset.ok = '1'; });
-    viewer.frames[a.url] = f; vbody.appendChild(f);
-    loading();
-  } else if (!f.dataset.ok) loading(); else loaded();
+  if (!f) { f = makeFrame(a); loading(); }   // first time: create the frame
+  else if (!f.dataset.ok) loading(); else loaded();   // v3.1: already open in the background → shows at once
+  try { localStorage.setItem('sfs-last', a.url); } catch (e) {}
   f.classList.add('on');
   document.body.classList.add('viewing');
   if (!ourEntry) { history.pushState({ sfsApp:1 }, ''); ourEntry = true; baseLen = history.length; }   // phone back button → home
   document.querySelector('meta[name=theme-color]').content = getComputedStyle(R).getPropertyValue('--sheet').trim() || '#111';
 }
+/* v3.1: an app's frame stays open in the background after Home, so opening it again is instant
+   (it keeps its screen and data). The last-used app is also opened quietly in the background
+   a moment after the launcher starts. */
+function makeFrame(a){
+  const f = document.createElement('iframe');
+  f.src = a.url; f.title = a.name;
+  f.allow = 'clipboard-read; clipboard-write; camera; microphone; geolocation; fullscreen';
+  f.referrerPolicy = 'no-referrer-when-downgrade';
+  f.addEventListener('load', () => { f.dataset.ok = '1'; if (viewer.frames[viewer.cur && viewer.cur.url] === f) loaded(); });
+  viewer.frames[a.url] = f; vbody.appendChild(f);
+  return f;
+}
+function preload(a){
+  if (!a || a.mode === 'browser' || !/^https:\/\//.test(a.url || '') || viewer.frames[a.url]) return;
+  if (navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || ''))) return;
+  makeFrame(a);
+}
+function preloadLast(){
+  let last = ''; try { last = localStorage.getItem('sfs-last') || ''; } catch (e) {}
+  const list = APPS.filter(a => a.active !== false && /^https:\/\//.test(a.url || '') && a.mode !== 'browser');
+  preload(list.find(a => a.url === last) || (list.length === 1 ? list[0] : null));
+}
+(window.requestIdleCallback || (fn => setTimeout(fn, 1200)))(preloadLast, { timeout: 2500 });
 function loading(){
   vload.classList.add('on'); document.getElementById('vhelp').classList.remove('on');
   document.getElementById('vmsg').textContent = 'Opening ' + (viewer.cur ? viewer.cur.name : '') + '…';
@@ -713,11 +738,13 @@ function loaded(){
   clearTimeout(slowTimer); vload.classList.remove('on');
   vprog.style.transition = 'width .3s'; vprog.style.width = '100%'; setTimeout(() => { vprog.style.width = '0'; vprog.style.transition = 'none'; }, 450);
 }
-function closeApp(){
+function closeApp(dropFrames){
   document.body.classList.remove('viewing');
-  /* remove the app's frame: this also clears its back-history, so the phone's back button never
-     gets stuck moving a hidden app. The app opens fresh next time (its own saved login still works). */
-  Object.keys(viewer.frames).forEach(u => { viewer.frames[u].remove(); delete viewer.frames[u]; });
+  /* v3.1: frames stay open in the background, so the app opens instantly next time.
+     Only when an app had moved to other pages inside itself (extra back-steps) are the frames
+     removed, so the phone's back button never gets stuck moving a hidden app. */
+  if (dropFrames) Object.keys(viewer.frames).forEach(u => { viewer.frames[u].remove(); delete viewer.frames[u]; });
+  Object.values(viewer.frames).forEach(f => f.classList.remove('on'));
   viewer.cur = null; clearTimeout(slowTimer); vload.classList.remove('on');
   apply();
 }
@@ -725,15 +752,17 @@ function closeApp(){
    so no "ghost" back-steps are left behind. Fallback: close directly. */
 document.getElementById('vback').onclick = () => {
   const n = ourEntry ? history.length - baseLen + 1 : 0;
+  if (n > 1) homeDrop = true;   // the app opened pages inside itself: start it fresh next time
   if (n >= 1) {
     history.go(-n);
-    setTimeout(() => { if (document.body.classList.contains('viewing')) closeApp(); }, 900);
+    setTimeout(() => { if (document.body.classList.contains('viewing')) closeApp(homeDrop); homeDrop = false; }, 900);
   } else closeApp();
 };
 /* Phone back button: when it reaches our entry, go home */
+let homeDrop = false;
 addEventListener('popstate', () => {
   ourEntry = !!(history.state && history.state.sfsApp);
-  if (!ourEntry && document.body.classList.contains('viewing')) closeApp();
+  if (!ourEntry && document.body.classList.contains('viewing')) { closeApp(homeDrop || history.length > baseLen); homeDrop = false; }
 });
 document.getElementById('vreload').onclick = () => {
   const a = viewer.cur; if (!a) return;
