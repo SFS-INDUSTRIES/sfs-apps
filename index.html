@@ -492,7 +492,7 @@ footer svg{width:12px;height:12px;stroke:var(--ok);fill:none;stroke-width:2;vert
 </div>
 
 <script>
-const APP_VERSION = '3.1.1';
+const APP_VERSION = '3.1.2';
 /* Link of the "SFS Apps – Config" Apps Script (Deploy → Web app URL, ends in /exec).
    When it is set, the app list comes from that Google Sheet and the admin can edit it from the launcher. */
 const CONFIG_URL = 'https://script.google.com/macros/s/AKfycbyXI1kXM1-8VJz5PBv9P8D-WuCnj_BDe-SruwpYqH1PdJ2gplOi1T-b1vB7KzIxHBYU/exec';
@@ -555,10 +555,7 @@ function render(){
     el.innerHTML = `<div class="ico">${ICONS[a.icon] || ICONS.module}</div>
       <div class="txt"><small>MODULE ${String(i+1).padStart(2,'0')}</small><b>${esc(a.name)}</b><span>${esc(a.note)}</span></div>
       <div class="end">${ready ? `<span class="live"><i></i>LIVE</span><span class="go">${ARROW}</span>` : '<span class="badge">SOON</span>'}</div>`;
-    if (ready) {
-      el.addEventListener('click', e => { e.preventDefault(); openApp(a); });
-      el.addEventListener('pointerdown', () => preload(a), { passive: true });   // v3.1: start loading on touch
-    }
+    if (ready) el.addEventListener('click', e => { e.preventDefault(); openApp(a); });
     else el.addEventListener('click', e => e.preventDefault());
     box.appendChild(el);
   });
@@ -683,55 +680,37 @@ document.getElementById('install').onclick = async () => { if (!deferred) return
 /* =========================================================
    IN-APP VIEWER  (apps open inside, Home button + phone back button)
    ========================================================= */
-const viewer = { frames:{}, cur:null };
-let ourEntry = false, baseLen = 0;
+const viewer = { frame:null, cur:null };
 const vbody = document.getElementById('vbody'), vload = document.getElementById('vload'), vprog = document.getElementById('vprog');
-let slowTimer;
+let slowTimer, ignorePop = false;
+const inStep = () => !!(history.state && history.state.sfsApp);
+/* v3.1.2: one app at a time, always opened fresh, and removed as soon as you go Home.
+   (Keeping apps loaded in the background, or leaving a half-loaded app running, made the
+   launcher freeze after a few quick back-and-forth switches.) Each app keeps its own saved
+   data on the phone, so it still opens quickly. */
 function openApp(a){
   if (a.mode === 'browser') { window.open(a.url, '_blank', 'noopener'); return; }
+  killFrame_();
   viewer.cur = a;
   document.getElementById('vname').textContent = a.name;
   const vi = document.getElementById('vicon');
   vi.innerHTML = ICONS[a.icon] || ICONS.module;
   vi.style.setProperty('--c1', a.c1 || 'var(--acc)'); vi.style.setProperty('--c2', a.c2 || 'var(--acc-deep)');
-  dropFrames_(a.url);   // v3.1.1: close any other app first
-  let f = viewer.frames[a.url];
-  if (!f) { f = makeFrame(a); loading(); }   // first time: create the frame
-  else if (!f.dataset.ok) loading(); else loaded();   // v3.1: already open in the background → shows at once
-  try { localStorage.setItem('sfs-last', a.url); } catch (e) {}
-  f.classList.add('on');
-  document.body.classList.add('viewing');
-  if (!ourEntry) { history.pushState({ sfsApp:1 }, ''); ourEntry = true; baseLen = history.length; }   // phone back button → home
-  document.querySelector('meta[name=theme-color]').content = getComputedStyle(R).getPropertyValue('--sheet').trim() || '#111';
-}
-/* v3.1: the last app stays open in the background after Home, so opening it again is instant.
-   v3.1.1: only ONE app is ever open at a time. Two Google Apps Script apps open together in the
-   same page can block each other (the app froze when going A → B → A), so opening or touching
-   another app first closes the one in the background. */
-function dropFrames_(keepUrl){
-  Object.keys(viewer.frames).forEach(u => { if (u !== keepUrl) { viewer.frames[u].remove(); delete viewer.frames[u]; } });
-}
-function makeFrame(a){
-  dropFrames_(a.url);
   const f = document.createElement('iframe');
   f.src = a.url; f.title = a.name;
   f.allow = 'clipboard-read; clipboard-write; camera; microphone; geolocation; fullscreen';
   f.referrerPolicy = 'no-referrer-when-downgrade';
-  f.addEventListener('load', () => { f.dataset.ok = '1'; if (viewer.frames[viewer.cur && viewer.cur.url] === f) loaded(); });
-  viewer.frames[a.url] = f; vbody.appendChild(f);
-  return f;
+  f.addEventListener('load', () => { if (viewer.frame === f) loaded(); });
+  viewer.frame = f; vbody.appendChild(f);
+  f.classList.add('on');
+  loading();
+  document.body.classList.add('viewing');
+  if (!inStep() && !ignorePop) history.pushState({ sfsApp:1 }, '');   // phone back button → home
+  document.querySelector('meta[name=theme-color]').content = getComputedStyle(R).getPropertyValue('--sheet').trim() || '#111';
 }
-function preload(a){
-  if (!a || a.mode === 'browser' || !/^https:\/\//.test(a.url || '') || viewer.frames[a.url]) return;
-  if (navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || ''))) return;
-  makeFrame(a);
+function killFrame_(){
+  if (viewer.frame) { viewer.frame.remove(); viewer.frame = null; }   // stops any loading and its back-steps
 }
-function preloadLast(){
-  let last = ''; try { last = localStorage.getItem('sfs-last') || ''; } catch (e) {}
-  const list = APPS.filter(a => a.active !== false && /^https:\/\//.test(a.url || '') && a.mode !== 'browser');
-  preload(list.find(a => a.url === last) || (list.length === 1 ? list[0] : null));
-}
-(window.requestIdleCallback || (fn => setTimeout(fn, 1200)))(preloadLast, { timeout: 2500 });
 function loading(){
   vload.classList.add('on'); document.getElementById('vhelp').classList.remove('on');
   document.getElementById('vmsg').textContent = 'Opening ' + (viewer.cur ? viewer.cur.name : '') + '…';
@@ -743,36 +722,29 @@ function loaded(){
   clearTimeout(slowTimer); vload.classList.remove('on');
   vprog.style.transition = 'width .3s'; vprog.style.width = '100%'; setTimeout(() => { vprog.style.width = '0'; vprog.style.transition = 'none'; }, 450);
 }
-function closeApp(dropFrames){
+function closeApp(){
   document.body.classList.remove('viewing');
-  /* v3.1: frames stay open in the background, so the app opens instantly next time.
-     Only when an app had moved to other pages inside itself (extra back-steps) are the frames
-     removed, so the phone's back button never gets stuck moving a hidden app. */
-  if (dropFrames) Object.keys(viewer.frames).forEach(u => { viewer.frames[u].remove(); delete viewer.frames[u]; });
-  Object.values(viewer.frames).forEach(f => f.classList.remove('on'));
+  killFrame_();
   viewer.cur = null; clearTimeout(slowTimer); vload.classList.remove('on');
-  ourEntry = !!(history.state && history.state.sfsApp);   // v3.1.1: never keep a stale "inside app" step
   apply();
 }
-/* Home button: step back over our entry AND every page the app opened inside itself,
-   so no "ghost" back-steps are left behind. Fallback: close directly. */
+/* Home button: go home at once, then remove our "inside app" back-step. */
 document.getElementById('vback').onclick = () => {
-  const n = ourEntry ? history.length - baseLen + 1 : 0;
-  if (n > 1) homeDrop = true;   // the app opened pages inside itself: start it fresh next time
-  if (n >= 1) {
-    history.go(-n);
-    setTimeout(() => { if (document.body.classList.contains('viewing')) closeApp(homeDrop); homeDrop = false; }, 900);
-  } else closeApp();
+  closeApp();
+  if (inStep()) { ignorePop = true; history.back(); setTimeout(() => { ignorePop = false; }, 1500); }
 };
-/* Phone back button: when it reaches our entry, go home */
-let homeDrop = false;
+/* Phone back button: when it reaches the home step, go home */
 addEventListener('popstate', () => {
-  ourEntry = !!(history.state && history.state.sfsApp);
-  if (!ourEntry && document.body.classList.contains('viewing')) { closeApp(homeDrop || history.length > baseLen); homeDrop = false; }
+  if (ignorePop) {
+    ignorePop = false;
+    if (document.body.classList.contains('viewing') && !inStep()) history.pushState({ sfsApp:1 }, '');   // an app was opened very quickly again
+    return;
+  }
+  if (!inStep() && document.body.classList.contains('viewing')) closeApp();
 });
 document.getElementById('vreload').onclick = () => {
   const a = viewer.cur; if (!a) return;
-  const f = viewer.frames[a.url]; delete f.dataset.ok; loading(); f.src = a.url;
+  openApp(a);
 };
 const ext = () => viewer.cur && window.open(viewer.cur.url, '_blank', 'noopener');
 document.getElementById('vext').onclick = ext;

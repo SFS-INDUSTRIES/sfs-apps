@@ -1,6 +1,6 @@
 /* SFS Apps – service worker
    Change VERSION whenever index.html changes: every installed app then shows "Update available". */
-const VERSION = '3.1.1';
+const VERSION = '3.1.2';
 const CACHE = 'sfs-apps-' + VERSION;
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-32.png', './apple-touch-icon.png'];
 
