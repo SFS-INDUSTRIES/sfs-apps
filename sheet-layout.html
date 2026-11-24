@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SFS Tinplate Sheet Layout & Gang Slitter Planner</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#eef2f6;color:#0f172a;font-size:14px}
+  header{background:#0f172a;color:#fff;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+  header h1{font-size:17px;margin:0}
+  header small{color:#94a3b8;display:block;font-size:12px}
+  button{cursor:pointer}
+  .btns button{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:7px 12px;font-size:13px;margin-left:4px}
+  .btns button.pri{background:#2563eb;border-color:#2563eb;color:#fff}
+  main{display:grid;grid-template-columns:360px 1fr;gap:14px;padding:14px;max-width:1500px;margin:auto}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid #dbe2ea;border-radius:10px;margin-bottom:12px;overflow:hidden}
+  .card h2{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.05em;background:#1e293b;color:#fff;padding:8px 12px}
+  .card .body{padding:12px}
+  label{display:block;font-size:12px;font-weight:600;color:#334155;margin:8px 0 3px}
+  input,select{width:100%;padding:7px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;font-family:Consolas,monospace}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .row{display:flex;gap:6px;margin-top:8px}
+  .row button{flex:1;border:1px solid #cbd5e1;background:#f8fafc;border-radius:6px;padding:7px 6px;font-size:12px}
+  .row button.pri{background:#2563eb;color:#fff;border-color:#2563eb}
+  .row button.del{color:#b91c1c}
+  .chk{display:flex;gap:8px;align-items:flex-start;font-weight:500;margin-top:10px}
+  .chk input{width:auto;margin-top:2px}
+  .hint{font-size:11px;color:#64748b;margin-top:4px;line-height:1.4}
+  .sub{font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;margin-top:12px;border-top:1px dashed #e2e8f0;padding-top:8px}
+  .banner{background:linear-gradient(90deg,#0f172a,#1e3a8a);color:#fff;border-radius:10px;padding:14px;margin-bottom:12px}
+  .banner .tag{background:#10b981;color:#052e16;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px}
+  .banner h3{margin:8px 0 4px;font-size:16px}
+  .banner p{margin:0;color:#cbd5e1;font-size:13px}
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  @media(max-width:600px){.plans{grid-template-columns:1fr}}
+  .plan{background:#fff;border:2px solid #dbe2ea;border-radius:10px;padding:12px;cursor:pointer}
+  .plan.active{border-color:#2563eb;box-shadow:0 0 0 3px #bfdbfe}
+  .plan.win .pt::after{content:" ★ BEST";color:#059669}
+  .plan .pt{font-weight:700;font-size:14px}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .kv div{background:#f1f5f9;border-radius:6px;padding:6px 8px}
+  .kv b{display:block;font-family:Consolas,monospace;font-size:16px}
+  .kv span{font-size:11px;color:#64748b}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .tabs button{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:6px 10px;font-size:13px}
+  .tabs button.on{background:#0f172a;color:#fff;border-color:#0f172a}
+  .svgwrap{background:#f8fafc;padding:8px;border-radius:8px}
+  svg{width:100%;height:auto;display:block}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:5px 8px;border-bottom:1px solid #e2e8f0;text-align:left}
+  th{background:#f1f5f9;font-size:12px}
+  td.n,th.n{text-align:right;font-family:Consolas,monospace}
+  .step{border-left:4px solid #2563eb;background:#eff6ff;padding:8px 10px;border-radius:6px;margin:8px 0}
+  .step.red{border-color:#e11d48;background:#fff1f2}
+  .step.grn{border-color:#059669;background:#ecfdf5}
+  .step b{display:block;margin-bottom:3px}
+  .knife{display:inline-block;background:#0f172a;color:#fff;border-radius:4px;padding:2px 6px;margin:2px;font-family:Consolas,monospace;font-size:12px}
+  .warn{background:#fffbeb;border:1px solid #fcd34d;color:#78350f;border-radius:8px;padding:8px 10px;font-size:12px;margin-top:8px}
+  .mono{font-family:Consolas,monospace}
+  #printArea{display:none}
+  .pc-sheet{break-before:page;page-break-before:always}
+  .pc-head{border-bottom:2px solid #0f172a;margin-bottom:8px;padding-bottom:6px}
+  .pc-head h1{font-size:18px;margin:0}
+  @media print{
+    @page{size:A4;margin:10mm}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    header,main{display:none!important}
+    #printArea{display:block!important}
+    svg{max-height:150mm}
+    aside,.btns,.tabs,.plans{display:none!important}
+    main{grid-template-columns:1fr;padding:0}
+    body{background:#fff}
+    .card,.banner,.step{break-inside:avoid}
+  }
+  .jobs{font-size:12px}.jobs th{padding:3px;font-size:11px;background:none}
+  .jobs td{padding:4px 2px;border:none}
+  .jobs select,.jobs input{padding:6px 5px;font-size:13px}
+  .jobs .x{border:none;background:none;color:#b91c1c;font-size:18px;padding:0 4px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:12px}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid #0003}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Tinplate Sheet Layout &amp; Gang Slitter Planner</h1>
+    <small>SFS Industries · bodies + lids + bottoms · several sizes on one sheet · all sizes in mm · works offline</small>
+  </div>
+  <div class="btns">
+    <button id="bPng">Download layout (PNG)</button>
+    <button id="bCard">Download job card</button>
+    <button id="bCsv">Export CSV</button>
+    <button class="pri" id="bPrint">Print / Save PDF</button>
+  </div>
+</header>
+
+<main>
+<aside>
+  <!-- JOB -->
+  <div class="card"><h2>1. Job – what goes on the sheets</h2><div class="body">
+    <table class="jobs" id="jobs"></table>
+    <div id="jobWarn"></div>
+    <div class="row"><button class="pri" id="bAddJob">+ Add can / part</button></div>
+    <div class="hint">Choose the mold, change the body height if needed, and tick the parts (e.g. Ø200: body + lid + bottom, Ø175: body + lid only). Lid, bottom and body length are fixed by the mold. Parts with the same size are joined, and the app places everything on the sheets by itself.</div>
+    <div class="g3">
+      <div><label>Spoilage %</label><input id="spoil" type="number" value="3" step="0.5"></div>
+      <div><label>Gauge (mm)</label><input id="gauge" type="number" value="0.22" step="0.01"></div>
+      <div><label>Curl + flange (mm)</label><input id="hAllow" type="number" value="8" step="0.5"></div>
+    </div>
+    <div class="hint">Height in the job = can height. Body blank height = can height + curl/flange allowance (e.g. 50 + 8 = 58).</div>
+  </div></div>
+
+  <!-- PRODUCT LIBRARY -->
+  <div class="card"><h2>2. Molds (saved list)</h2><div class="body">
+    <label>Edit mold</label>
+    <select id="prodSel"></select>
+    <div class="g2">
+      <div><label>Mold name</label><input id="pName" style="font-family:inherit"></div>
+      <div><label>Category</label><input id="pCat" style="font-family:inherit" placeholder="Cookie cans"></div>
+    </div>
+    <div class="sub">Body blank</div>
+    <div class="g3">
+      <div><label>Length (mm)</label><input id="bodyL" type="number" step="0.1"></div>
+      <div><label>Default can height</label><input id="bodyH" type="number" step="0.1"></div>
+      <div><label>Heights allowed</label><input id="pHts" placeholder="50-100" style="font-size:12px"></div>
+    </div>
+    <div class="sub">Lid</div>
+    <div class="g2">
+      <div><label>Shape</label><select id="lidF"><option value="round">Round</option><option value="square">Square</option><option value="rect">Rectangular</option></select></div>
+      <div><label>Margin each side (mm)</label><input id="lidM" type="number" step="0.5"></div>
+    </div>
+    <div class="g3">
+      <div><label>Cutting W (mm)</label><input id="lidW" type="number" step="0.1"></div>
+      <div><label>Cutting L (mm)</label><input id="lidL" type="number" step="0.1"></div>
+      <div><label>Lid size</label><input id="lidD" readonly style="background:#f1f5f9;font-size:12px"></div>
+    </div>
+    <div class="sub">Bottom</div>
+    <div class="g2">
+      <div><label>Shape</label><select id="botF"><option value="round">Round</option><option value="square">Square</option><option value="rect">Rectangular</option></select></div>
+      <div><label>Margin each side (mm)</label><input id="botM" type="number" step="0.5"></div>
+    </div>
+    <div class="g3">
+      <div><label>Cutting W (mm)</label><input id="botW" type="number" step="0.1"></div>
+      <div><label>Cutting L (mm)</label><input id="botL" type="number" step="0.1"></div>
+      <div><label>Bottom size</label><input id="botD" readonly style="background:#f1f5f9;font-size:12px"></div>
+    </div>
+    <div class="hint">The slitter cuts pieces of the cutting size W × L (e.g. 200×200, or 250×180 for a rectangular can). The press punches the lid/bottom from each piece. Cutting size = lid/bottom size + 2 × margin (5 mm each side). Round with W ≠ L = oval. Leave 0 for a part the mold does not have.</div>
+    <div class="row">
+      <button class="pri" id="bSave">Save mold</button>
+      <button id="bNew">New</button>
+      <button class="del" id="bDel">Delete</button>
+    </div>
+    <div class="row">
+      <button id="bExp">Backup list</button>
+      <button id="bImp">Restore list</button>
+      <input type="file" id="fImp" accept=".json" style="display:none">
+    </div>
+  </div></div>
+
+  <!-- SHEETS -->
+  <div class="card"><h2>3. Our sheet sizes</h2><div class="body">
+    <label>Sheet sizes W×L (mm), comma separated</label>
+    <input id="sheets" value="1000x850, 960x760, 900x800">
+    <div class="hint">The app tries every size, both ways round, and picks the lowest tinplate weight.</div>
+    <label class="chk"><input id="sameSheet" type="checkbox" checked><span>Use one sheet size for the whole job</span></label>
+    <label>Printing / coating gripper margin (mm)</label>
+    <input id="grip" type="number" value="12" step="0.5">
+  </div></div>
+
+  <!-- SLITTER -->
+  <div class="card"><h2>4. Gang slitter</h2><div class="body">
+    <div class="g2">
+      <div><label>Knives</label><input id="knives" type="number" value="8"></div>
+      <div><label>Min knife spacing (mm)</label><input id="minSp" type="number" value="55"></div>
+    </div>
+    <div class="g2">
+      <div><label>Edge margin for blade (mm)</label><input id="edge" type="number" value="5" step="0.5"></div>
+      <div><label>Gap between bodies (mm)</label><input id="bGap" type="number" value="0" step="0.1"></div>
+    </div>
+    <div class="hint">Edge margin = scrap at every sheet edge so the blade cuts cleanly (oil cans 5 mm). Pieces narrower than the min knife spacing are not used.</div>
+    <label class="chk"><input id="rot" type="checkbox" checked><span>Allow 90° rotation of bodies, lids &amp; bottoms (untick if grain/print direction is fixed)</span></label>
+    <label class="chk"><input id="combo" type="checkbox" checked><span>Also try gang sheets (different parts / sizes on one sheet — only if they get the same print/lacquer)</span></label>
+  </div></div>
+</aside>
+
+<section>
+  <div class="banner" id="banner"></div>
+  <div class="plans" id="plans"></div>
+  <div class="card"><h2 id="shTitle">Sheet layout</h2><div class="body">
+    <div class="tabs" id="tabs"></div>
+    <div class="svgwrap" id="svg"></div>
+    <div class="legend" id="legend"></div>
+    <div id="sheetInfo"></div>
+  </div></div>
+  <div class="card"><h2>Gang slitter setup – operator instructions</h2><div class="body" id="steps"></div></div>
+  <div class="card"><h2>Production summary</h2><div class="body" id="summary"></div></div>
+</section>
+</main>
+<div id="printArea"></div>
+
+<script>
+/* ================= STORAGE ================= */
+const $ = id => document.getElementById(id);
+const LS_P = 'sfs_sheet_molds_v2', LS_S = 'sfs_sheet_settings_v1', LS_J = 'sfs_sheet_jobs_v2';
+function load(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v || d; } catch (e) { return d; } }
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click();
+}
+function toast(m) { const d = document.createElement('div'); d.textContent = m;
+  d.style.cssText = 'position:fixed;bottom:16px;right:16px;background:#0f172a;color:#fff;padding:10px 14px;border-radius:8px;z-index:9;font-size:13px';
+  document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ================= CAN LIBRARY ================= */
+// SFS cookie-can molds. Lid (Top/OD) and bottom = BLANK sizes from the dimension record;
+// cutting size = blank + 2 × 5 mm margin. Body length = "body dia" (blank length) from the mold chart.
+const M = 5;
+const mold = (name, bL, bH, hts, lidF, lidB, botF, botB) => ({
+  cat: 'Cookie cans', name, bL, bH, hts,
+  lidF, lidW: lidB[0] ? lidB[0] + 2 * M : 0, lidL: lidB[0] ? lidB[1] + 2 * M : 0, lidM: M,
+  botF, botW: botB[0] ? botB[0] + 2 * M : 0, botL: botB[0] ? botB[1] + 2 * M : 0, botM: M });
+const EXAMPLE = [
+  mold('215 Rect',  693.4, 55, '55',                'rect',   [255, 186],     'rect',   [231.5, 162.5]),
+  mold('230 Rect',  763.4, 55, '55, 70',            'rect',   [270, 205],     'rect',   [241, 181]),
+  mold('200 Sq',    773.4, 50, '50',                'square', [240, 240],     'square', [216, 216]),
+  mold('200 Round', 635,   50, '50-100',            'round',  [237.5, 237.5], 'round',  [216, 216]),
+  mold('260 Round', 829,   50, '50-100',            'round',  [300, 300],     'round',  [285, 285]),
+  mold('235 Sq',    916.5, 50, '50, 55, 60, 65, 70, 90', 'square', [280, 280], 'square', [254, 254]),
+  mold('152 Round', 487,   70, '70-100',            'round',  [182, 182],     'round',  [169, 169]),
+  mold('175 Round', 559,   50, '50-100',            'round',  [205, 205],     'round',  [195, 195]),
+  mold('99 Round',  321,   50, '50-130',            'round',  [126.5, 126.5], 'round',  [115.5, 115.5]),
+  mold('65 Round',  216.5, 70, '70-140',            'round',  [0, 0],         'round',  [0, 0])];
+// older saved molds had one square cutting size (lidC) and/or blank Ø (lidD) – convert them
+let products = load(LS_P, EXAMPLE).map(p => {
+  const q = { ...p };
+  ['lid', 'bot'].forEach(k => {
+    if (q[k + 'W'] === undefined) { const C = q[k + 'C'] || 0; q[k + 'W'] = C; q[k + 'L'] = C; q[k + 'F'] = 'round';
+      if (q[k + 'M'] === undefined) q[k + 'M'] = Math.max(0, (C - (q[k + 'D'] || C)) / 2); }
+  });
+  return q;
+});
+const PF = ['pCat', 'bodyL', 'bodyH', 'pHts', 'lidF', 'lidW', 'lidL', 'lidM', 'botF', 'botW', 'botL', 'botM'],
+      PK = ['cat', 'bL', 'bH', 'hts', 'lidF', 'lidW', 'lidL', 'lidM', 'botF', 'botW', 'botL', 'botM'];
+const TXT = ['pCat', 'pHts', 'lidF', 'botF'];
+// "50-100" or "55, 70" -> is height allowed?
+function heightOK(hts, h) {
+  if (!hts || !String(hts).trim()) return true;
+  return String(hts).split(',').some(part => {
+    const r = part.split(/[-–]/).map(x => parseFloat(x)).filter(x => !isNaN(x));
+    return r.length === 2 ? h >= r[0] - 1e-6 && h <= r[1] + 1e-6 : r.length === 1 ? Math.abs(h - r[0]) < 1e-6 : false;
+  });
+}
+const moldOptions = sel => {
+  const cats = [...new Set(products.map(p => p.cat || 'Other'))];
+  return cats.map(c => `<optgroup label="${esc(c)}">` + products.map((p, i) => (p.cat || 'Other') !== c ? '' :
+    `<option value="${i}" ${sel(p, i) ? 'selected' : ''}>${esc(p.name)}</option>`).join('') + '</optgroup>').join('');
+};
+
+function fillProdSel(sel) {
+  $('prodSel').innerHTML = moldOptions(() => false);
+  $('prodSel').value = sel || 0; loadProd(); renderJobs();
+}
+function loadProd() {
+  const p = products[+$('prodSel').value]; if (!p) return;
+  $('pName').value = p.name; PF.forEach((f, i) => $(f).value = p[PK[i]] ?? ''); showBlanks();
+}
+function showBlanks() {
+  ['lid', 'bot'].forEach(k => {
+    const f = $(k + 'F').value, w = num(k + 'W', 0) - 2 * num(k + 'M', 0), l = num(k + 'L', 0) - 2 * num(k + 'M', 0);
+    $(k + 'D').value = !(w > 0 && l > 0) ? '—' : blankTxt(f, w, l);
+  });
+}
+$('prodSel').onchange = loadProd;
+['lidF', 'lidW', 'lidL', 'lidM', 'botF', 'botW', 'botL', 'botM'].forEach(id => $(id).addEventListener('input', showBlanks));
+function blankTxt(f, w, l) { return f === 'round' ? (Math.abs(w - l) < 0.01 ? `Ø${f1(w)}` : `oval ${f1(w)}×${f1(l)}`) : `${f === 'square' ? '▢' : '▭'} ${f1(w)}×${f1(l)}`; }
+$('bSave').onclick = () => {
+  const p = { name: $('pName').value.trim() || 'Unnamed can' };
+  PF.forEach((f, i) => p[PK[i]] = TXT.includes(f) ? $(f).value : (parseFloat($(f).value) || 0));
+  let i = products.findIndex(x => x.name === p.name);
+  if (i < 0) { products.push(p); i = products.length - 1; } else products[i] = p;
+  store(LS_P, products); fillProdSel(i); run(); toast('Saved: ' + p.name);
+};
+$('bNew').onclick = () => { $('pName').value = ''; $('pName').focus(); };
+$('bDel').onclick = () => {
+  const i = +$('prodSel').value; if (products.length <= 1) return toast('Keep at least one mold');
+  if (!confirm('Delete ' + products[i].name + '?')) return;
+  products.splice(i, 1); store(LS_P, products); fillProdSel(0); run();
+};
+$('bExp').onclick = () => download('sfs_molds.json', JSON.stringify(products, null, 1), 'application/json');
+$('bImp').onclick = () => $('fImp').click();
+$('fImp').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(t => { try { const a = JSON.parse(t); if (Array.isArray(a) && a.length) { products = a; store(LS_P, a); fillProdSel(0); run(); toast('List restored'); } } catch (x) { toast('Not a valid backup file'); } });
+};
+
+/* ================= JOB LIST ================= */
+// each job line: which can, how many, and which parts (Body / Lid / Bottom ticks)
+const OLD = { all: [1, 1, 1], body: [1, 0, 0], ends: [0, 1, 1], lid: [0, 1, 0], bot: [0, 0, 1] };
+const newJob = (name, qty) => { const p = products.find(x => x.name === name) || {}; return { name, h: p.bH, qty, b: true, l: p.lidW > 0, bt: p.botW > 0 }; };
+let jobs = load(LS_J, [newJob((products.find(p => p.name === '200 Round') || products[0]).name, 10000)]).map(j => {
+  if (j.b === undefined) { const o = OLD[j.parts] || OLD.all; j = { name: j.name, qty: j.qty, b: !!o[0], l: !!o[1], bt: !!o[2] }; }
+  if (!(j.h > 0)) { const p = products.find(x => x.name === j.name); j.h = p ? p.bH : 0; }
+  return j;
+});
+function renderJobs() {
+  $('jobs').innerHTML = '<tr><th>Mold</th><th>Height</th><th>Qty</th><th title="Body">B</th><th title="Lid">L</th><th title="Bottom">Bt</th><th></th></tr>' + jobs.map((j, i) => `<tr>
+    <td><select data-i="${i}" data-f="name">${moldOptions(p => p.name === j.name)}</select></td>
+    <td><input data-i="${i}" data-f="h" type="number" step="0.5" value="${j.h}" style="width:58px;${heightOK((products.find(p => p.name === j.name) || {}).hts, j.h) ? '' : 'border-color:#dc2626;background:#fef2f2'}" title="Allowed: ${esc((products.find(p => p.name === j.name) || {}).hts || 'any')}"></td>
+    <td><input data-i="${i}" data-f="qty" type="number" value="${j.qty}" style="width:70px"></td>
+    ${['b', 'l', 'bt'].map(k => `<td style="text-align:center"><input type="checkbox" data-i="${i}" data-f="${k}" ${j[k] ? 'checked' : ''} style="width:18px;height:18px"></td>`).join('')}
+    <td><button class="x" data-del="${i}" title="Remove">×</button></td></tr>`).join('');
+  $('jobs').querySelectorAll('[data-f]').forEach(el => el.addEventListener('input', () => {
+    const j = jobs[+el.dataset.i], f = el.dataset.f;
+    j[f] = (f === 'qty' || f === 'h') ? (parseFloat(el.value) || 0) : el.type === 'checkbox' ? el.checked : el.value;
+    if (f === 'name') { const p = products[+el.value]; if (p) { j.name = p.name; j.h = p.bH; j.l = p.lidW > 0; j.bt = p.botW > 0; } renderJobs(); }
+    if (f === 'h') { const p = products.find(x => x.name === j.name) || {}; el.style.borderColor = heightOK(p.hts, j.h) ? '' : '#dc2626'; el.style.background = heightOK(p.hts, j.h) ? '' : '#fef2f2'; jobWarn(); }
+    run();
+  }));
+  $('jobs').querySelectorAll('[data-del]').forEach(el => el.onclick = () => {
+    if (jobs.length <= 1) return toast('Keep at least one line'); jobs.splice(+el.dataset.del, 1); renderJobs(); run();
+  });
+}
+function jobWarn() {
+  const bad = jobs.filter(j => { const p = products.find(x => x.name === j.name); return p && !heightOK(p.hts, j.h); });
+  const noEnds = jobs.filter(j => { const p = products.find(x => x.name === j.name); return p && ((j.l && !(p.lidW > 0)) || (j.bt && !(p.botW > 0))); });
+  $('jobWarn').innerHTML = (bad.length ? `<div class="warn">Height not in the mold's allowed list: ${bad.map(j => `${esc(j.name)} H${j.h} (allowed ${esc(products.find(x => x.name === j.name).hts)})`).join('; ')}</div>` : '') +
+    (noEnds.length ? `<div class="warn">No lid/bottom size saved for: ${noEnds.map(j => esc(j.name)).join(', ')} – only the body is planned.</div>` : '');
+}
+$('bAddJob').onclick = () => { jobs.push(newJob(products[Math.min(jobs.length, products.length - 1)].name, 5000)); renderJobs(); run(); };
+
+/* settings persistence */
+const SET = ['spoil', 'gauge', 'hAllow', 'sheets', 'sameSheet', 'grip', 'knives', 'minSp', 'edge', 'bGap', 'rot', 'combo'];
+(function () { const s = load(LS_S, null); if (s) SET.forEach(k => { if (s[k] !== undefined) { const el = $(k); if (el.type === 'checkbox') el.checked = s[k]; else el.value = s[k]; } }); })();
+function saveSettings() { jobWarn(); const s = {}; SET.forEach(k => { const el = $(k); s[k] = el.type === 'checkbox' ? el.checked : el.value; }); store(LS_S, s); store(LS_J, jobs); }
+
+/* ================= ENGINE ================= */
+const DENS = 7.85e-6; // kg per mm³ steel
+const num = (id, d) => { const v = parseFloat($(id).value); return isNaN(v) ? d : v; };
+const S = { plans: null, active: 0, tab: 0 };
+const PAL = [['#dbeafe', '#2563eb'], ['#d1fae5', '#059669'], ['#fef3c7', '#d97706'], ['#fce7f3', '#db2777'],
+             ['#ede9fe', '#7c3aed'], ['#cffafe', '#0891b2'], ['#fee2e2', '#dc2626'], ['#e2e8f0', '#475569']];
+
+function settings() {
+  const sizes = $('sheets').value.split(',').map(s => s.toLowerCase().split(/[x×*]/).map(parseFloat))
+    .filter(a => a.length === 2 && a[0] > 50 && a[1] > 50);
+  return {
+    spoil: Math.max(0, num('spoil', 3)), gauge: num('gauge', 0.22),
+    sizes: sizes.length ? sizes : [[1000, 850]], sameSheet: $('sameSheet').checked,
+    hAllow: Math.max(0, num('hAllow', 8)), grip: Math.max(0, num('grip', 12)), edge: Math.max(0, num('edge', 5)), bGap: Math.max(0, num('bGap', 0)),
+    knives: Math.max(2, Math.round(num('knives', 8))), minStrip: Math.max(0, num('minSp', 55)),
+    rot: $('rot').checked, combo: $('combo').checked
+  };
+}
+
+// Turn job lines into a list of distinct parts (same size parts are merged)
+function buildItems(inp) {
+  const map = new Map();
+  // shape 'rect' = body blank, shape 'circle' = lid/bottom piece (form: round / square / rect)
+  const add = (shape, w, h, need, label, form, m) => {
+    if (!(w > 0) || !(h > 0) || need <= 0) return;
+    const bw = w - 2 * (m || 0), bh = h - 2 * (m || 0);
+    if (shape === 'circle' && !(bw > 0 && bh > 0)) return;
+    const key = shape === 'rect' ? `R${w}x${h}` : `E${form}${w}x${h}m${m}`;
+    if (!map.has(key)) map.set(key, { key, shape, w, h, form, m: m || 0, bw, bh, need: 0, labels: [] });
+    const it = map.get(key); it.need += need; if (!it.labels.includes(label)) it.labels.push(label);
+  };
+  jobs.forEach(j => {
+    const p = products.find(x => x.name === j.name); if (!p || !(j.qty > 0)) return;
+    const t = Math.ceil(j.qty * (1 + inp.spoil / 100));
+    const h = j.h > 0 ? j.h : p.bH, bh = +(h + inp.hAllow).toFixed(2);
+    if (j.b) add('rect', p.bL, bh, t, `${p.name} body H${h} (+${inp.hAllow})`);
+    if (j.l) add('circle', p.lidW, p.lidL, t, `${p.name} lid`, p.lidF || 'round', p.lidM);
+    if (j.bt) add('circle', p.botW, p.botL, t, `${p.name} bottom`, p.botF || 'round', p.botM);
+  });
+  return [...map.values()].map((it, i) => ({ ...it, no: i + 1, col: PAL[i % PAL.length],
+    label: it.labels.join(' + '),
+    size: it.shape === 'rect' ? `${it.w}×${it.h}` : `${it.w}×${it.h} → ${blankTxt(it.form, it.bw, it.bh)}`,
+    area: it.shape === 'rect' ? it.w * it.h : it.form === 'round' ? Math.PI * it.bw * it.bh / 4 : it.bw * it.bh }));
+}
+
+const orient = inp => { const o = []; inp.sizes.forEach(([a, b]) => { o.push([a, b]); if (a !== b) o.push([b, a]); }); return o; };
+
+// strip types for one part across sheet width W (strips run parallel to W)
+function types(inp, W, it) {
+  const uW = W - 2 * inp.edge, out = [];
+  const gap = it.shape === 'circle' ? 0 : inp.bGap;
+  const oris = [{ w: it.w, h: it.h, rot: false }];
+  if (inp.rot && it.w !== it.h) oris.push({ w: it.h, h: it.w, rot: true });
+  for (const o of oris) {
+    const per = Math.floor((uW + gap) / (o.w + gap));
+    if (per >= 1 && o.h >= inp.minStrip && o.w >= inp.minStrip) out.push({ it, w: o.w, h: o.h, gap, per, rot: o.rot });
+  }
+  return out;
+}
+const usedLen = groups => { let u = 0, last = 0; groups.forEach(g => { u += g.n * (g.t.h + g.t.gap); last = g.t.gap; }); return u - last; };
+
+// knife positions: step 1 from gripper edge, step 2 per strip type from strip edge
+function knifePlan(inp, W, L, groups) {
+  const k = []; if (inp.grip > 0) k.push(inp.grip);
+  let y = inp.grip;
+  groups.forEach((g, gi) => {
+    for (let r = 0; r < g.n; r++) {
+      y += g.t.h; k.push(y);
+      const last = gi === groups.length - 1 && r === g.n - 1;
+      if (!last && g.t.gap > 0) { y += g.t.gap; k.push(y); }
+    }
+  });
+  if (L - y < 0.05) k.pop();
+  const p1 = [...new Set(k.map(v => +v.toFixed(1)))];
+  const p2 = []; let passes = Math.ceil(p1.length / inp.knives);
+  groups.forEach(g => {
+    const t = g.t, pos = []; let x = inp.edge; if (x > 0) pos.push(x);
+    for (let c = 0; c < t.per; c++) { x += t.w; pos.push(+x.toFixed(1)); if (c < t.per - 1 && t.gap > 0) { x += t.gap; pos.push(+x.toFixed(1)); } }
+    if (W - x < 0.05) pos.pop();
+    p2.push(pos); passes += g.n * Math.ceil(pos.length / inp.knives);
+  });
+  return { p1, p2, passes };
+}
+
+function sheetResult(inp, name, W, L, groups, sheets) {
+  groups = groups.filter(g => g.n > 0);
+  const net = groups.reduce((s, g) => s + g.n * g.t.per * g.t.it.area, 0);
+  const kp = knifePlan(inp, W, L, groups);
+  return { name, W, L, groups, sheets, area: sheets * W * L, kg: W * L * inp.gauge * DENS * sheets,
+           yield: net / (W * L) * 100, knives: kp, work: kp.passes * sheets };
+}
+// fewest sheets first, then less tinplate area, then less slitter work
+const better = (a, b) => !b || a.sheets < b.sheets ||
+  (a.sheets === b.sheets && (a.area < b.area - 1 || (Math.abs(a.area - b.area) <= 1 && a.work < b.work)));
+const sumM = l => ({ area: l.reduce((s, x) => s + x.area, 0), work: l.reduce((s, x) => s + x.work, 0), sheets: l.reduce((s, x) => s + x.sheets, 0) });
+
+/* Gang sheet: put every part in the list on one sheet design.
+   For a sheet count S each part needs ceil(need / (S × per strip)) strips.
+   Binary search finds the smallest S whose strips fit in the sheet length — exact for strip layouts. */
+function gangSheet(inp, W, L, items, name) {
+  const usable = L - inp.grip - inp.edge;
+  const T = items.map(it => types(inp, W, it));
+  if (T.some(t => !t.length)) return null;
+  const pick = Sh => {
+    let tot = 0; const groups = [];
+    for (const ts of T) {
+      let b = null;
+      for (const t of ts) { const n = Math.ceil(t.it.need / (Sh * t.per)); const len = n * (t.h + t.gap);
+        if (!b || len < b.len) b = { t, n, len }; }
+      tot += b.len; groups.push({ t: b.t, n: b.n });
+    }
+    return usedLen(groups) <= usable + 1e-6 ? groups : null;
+  };
+  let hi = Math.max(...T.map(ts => Math.max(...ts.map(t => Math.ceil(t.it.need / t.per)))));
+  if (!pick(hi)) return null;
+  let lo = 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (pick(mid)) hi = mid; else lo = mid + 1; }
+  let groups = pick(hi);
+  return sheetResult(inp, name, W, L, groups.sort((a, b) => (b.t.it.shape === 'rect') - (a.t.it.shape === 'rect')), hi);
+}
+function bestGang(inp, items, name, sizes) {
+  let best = null;
+  for (const [W, L] of sizes) { const r = gangSheet(inp, W, L, items, name); if (r && better(r, best)) best = r; }
+  return best;
+}
+const partName = it => `#${it.no} ${it.shape === 'rect' ? 'Body' : 'End'} ${it.size}`;
+
+function planA(inp, items) { // every part on its own sheet
+  const or = orient(inp);
+  if (inp.sameSheet) {
+    let best = null;
+    for (const [a, b] of inp.sizes) {
+      const l = items.map(it => bestGang(inp, [it], partName(it), [[a, b], [b, a]]));
+      if (l.some(x => !x)) continue;
+      const m = sumM(l); if (better(m, best && best.m)) best = { l, m };
+    }
+    return best && pack('A: Each part on own sheet', best.l);
+  }
+  const l = items.map(it => bestGang(inp, [it], partName(it), or));
+  return l.some(x => !x) ? null : pack('A: Each part on own sheet', l);
+}
+function planGroups(inp, title, groups) {
+  groups = groups.filter(g => g.items.length);
+  const go = sizes => groups.map(g => bestGang(inp, g.items, g.name, sizes));
+  let l;
+  if (inp.sameSheet) {
+    let best = null;
+    for (const [a, b] of inp.sizes) { const x = go([[a, b], [b, a]]); if (x.some(y => !y)) continue;
+      const m = sumM(x); if (better(m, best && best.m)) best = { l: x, m }; }
+    l = best && best.l;
+  } else { l = go(orient(inp)); if (l.some(y => !y)) l = null; }
+  return l && pack(title, l);
+}
+function pack(title, sheets) {
+  const m = sumM(sheets), net = S.items.reduce((s, it) => s + it.need * it.area, 0);
+  return { title, sheets, total: m.sheets, area: m.area, work: m.work, nSheets: m.sheets,
+           kg: sheets.reduce((s, x) => s + x.kg, 0), yield: net / m.area * 100,
+           sizes: [...new Set(sheets.map(s => s.W + '×' + s.L))] };
+}
+
+/* ================= UI ================= */
+const f0 = n => Math.round(n).toLocaleString('en-US');
+const f1 = n => (+n).toFixed(1);
+
+function run() {
+  saveSettings();
+  const inp = settings(); S.inp = inp;
+  const items = buildItems(inp); S.items = items;
+  if (!items.length) { $('banner').innerHTML = '<h3>Add a can to the job</h3>'; return; }
+  const rects = items.filter(i => i.shape === 'rect'), circs = items.filter(i => i.shape === 'circle');
+  const plans = [planA(inp, items)];
+  if (inp.combo && items.length > 1) {
+    if (rects.length > 1 || circs.length > 1)
+      plans.push(planGroups(inp, 'B: Bodies gang + ends gang', [{ name: 'Bodies gang sheet', items: rects }, { name: 'Ends gang sheet', items: circs }]));
+    if (rects.length && circs.length)
+      plans.push(planGroups(inp, 'C: All on one gang sheet', [{ name: 'Gang sheet (all parts)', items }]));
+  }
+  S.plans = plans;
+  const valid = plans.filter(Boolean);
+  if (!valid.length) {
+    $('banner').innerHTML = '<h3>No layout fits</h3><p>Check the sheet sizes and margins — some part does not fit inside the sheet.</p>';
+    ['plans', 'tabs', 'svg', 'legend', 'sheetInfo', 'steps', 'summary'].forEach(i => $(i).innerHTML = '');
+    return;
+  }
+  const win = valid.reduce((a, b) => (better({ sheets: b.total, area: b.area, work: b.work }, { sheets: a.total, area: a.area, work: a.work }) ? b : a));
+  S.active = plans.indexOf(win); S.tab = 0;
+  const rest = valid.filter(p => p !== win);
+  $('banner').innerHTML = `<span class="tag">RECOMMENDED</span>
+    <h3>${win.title} — ${f0(win.total)} sheets</h3>
+    <p>${items.length} different part size(s), ${jobs.length} job line(s). ` +
+    rest.map(o => o.total > win.total ? `Saves <b>${f0(o.total - win.total)} sheets</b> vs ${o.title.slice(3)}.` : `Same sheets as ${o.title.slice(3)}, less scrap.`).join(' ') + `</p>`;
+  $('plans').style.gridTemplateColumns = `repeat(${Math.min(plans.length, 3)},1fr)`;
+  $('plans').innerHTML = plans.map((p, i) => !p
+    ? `<div class="plan"><div class="pt">Plan ${'ABC'[i]}</div><p class="hint">Does not fit on these sheet sizes.</p></div>`
+    : `<div class="plan ${p === win ? 'win' : ''}" onclick="S.active=${i};S.tab=0;show()">
+      <div class="pt">${p.title}</div>
+      <div class="kv">
+        <div><b>${f0(p.total)}</b><span>total sheets</span></div>
+        <div><b>${p.sizes.join(', ')}</b><span>sheet size</span></div>
+        <div><b>${f1(p.yield)}%</b><span>material yield</span></div>
+        <div><b>${f0(p.work)}</b><span>slitter feeds</span></div>
+      </div></div>`).join('');
+  show();
+}
+
+function show() {
+  const p = S.plans[S.active]; if (!p) return;
+  document.querySelectorAll('.plan').forEach((el, i) => el.classList.toggle('active', i === S.active));
+  if (S.tab >= p.sheets.length) S.tab = 0;
+  const sh = p.sheets[S.tab];
+  $('tabs').innerHTML = p.sheets.map((s, i) =>
+    `<button class="${i === S.tab ? 'on' : ''}" onclick="S.tab=${i};show()">${s.name} (${f0(s.sheets)})</button>`).join('');
+  $('shTitle').textContent = `${p.title} → ${sh.name}: ${sh.W} × ${sh.L} mm`;
+  $('svg').innerHTML = drawSheet(sh, S.inp);
+  $('legend').innerHTML = sh.groups.map(g => `<span><i style="background:${g.t.it.col[0]};border-color:${g.t.it.col[1]}"></i>#${g.t.it.no} ${esc(g.t.it.label)} (${g.t.it.size})</span>`).join('');
+  const per = sh.groups.map(g => `${g.n * g.t.per} × #${g.t.it.no}`).join(' + ');
+  $('sheetInfo').innerHTML = `<p class="mono" style="margin:8px 0 0">Per sheet: <b>${per}</b> · ${f0(sh.sheets)} sheets · yield ${f1(sh.yield)}% </p>`;
+  $('steps').innerHTML = steps(sh, S.inp);
+  summary(p);
+}
+
+function drawSheet(sh, inp) {
+  const W = sh.W, L = sh.L, pad = Math.max(W, L) * 0.09, fs = Math.max(W, L) / 55;
+  let o = `<svg viewBox="${-pad} ${-pad} ${W + pad * 1.4} ${L + pad * 1.4}" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace">`;
+  o += `<rect x="0" y="0" width="${W}" height="${L}" fill="#fff" stroke="#0f172a" stroke-width="${fs / 5}"/>`;
+  if (inp.grip > 0) {
+    o += `<rect x="0" y="0" width="${W}" height="${inp.grip}" fill="#cbd5e1"/>`;
+    o += `<text x="${W / 2}" y="${inp.grip * 0.78}" font-size="${Math.min(fs, inp.grip * 0.8)}" text-anchor="middle" fill="#334155">GRIPPER ${inp.grip}</text>`;
+  }
+  let y = inp.grip;
+  for (const g of sh.groups) {
+    const t = g.t, it = t.it, [fill, st] = it.col;
+    for (let r = 0; r < g.n; r++) {
+      for (let c = 0; c < t.per; c++) {
+        const x = inp.edge + c * (t.w + t.gap);
+        if (it.shape === 'rect') {
+          o += `<rect x="${x}" y="${y}" width="${t.w}" height="${t.h}" fill="${fill}" stroke="${st}" stroke-width="${fs / 8}"/>`;
+          const lab = `#${it.no} ${t.w}×${t.h}`.length * fs * 0.62 < t.w ? `#${it.no} ${t.w}×${t.h}` : (fs * 2 < t.w ? `#${it.no}` : '');
+          if (lab && t.h > fs * 1.5) o += `<text x="${x + t.w / 2}" y="${y + t.h / 2 + fs / 3}" font-size="${fs}" text-anchor="middle" fill="${st}">${lab}</text>`;
+        } else {
+          o += `<rect x="${x}" y="${y}" width="${t.w}" height="${t.h}" fill="#f8fafc" stroke="${st}" stroke-width="${fs / 10}"/>`;
+          const bw = t.rot ? it.bh : it.bw, bh = t.rot ? it.bw : it.bh, cx = x + t.w / 2, cy = y + t.h / 2;
+          o += it.form === 'round'
+            ? `<ellipse cx="${cx}" cy="${cy}" rx="${bw / 2}" ry="${bh / 2}" fill="${fill}" stroke="${st}" stroke-width="${fs / 8}"/>`
+            : `<rect x="${cx - bw / 2}" y="${cy - bh / 2}" width="${bw}" height="${bh}" rx="${Math.min(bw, bh) * 0.08}" fill="${fill}" stroke="${st}" stroke-width="${fs / 8}"/>`;
+          if (Math.min(bw, bh) > fs * 3) o += `<text x="${x + t.w / 2}" y="${y + t.h / 2 + fs / 3}" font-size="${fs * 0.9}" text-anchor="middle" fill="${st}">#${it.no}</text>`;
+        }
+      }
+      y += t.h + t.gap;
+    }
+  }
+  sh.knives.p1.forEach((k, i) => {
+    o += `<line x1="${-pad / 4}" y1="${k}" x2="${W + pad / 4}" y2="${k}" stroke="#e11d48" stroke-width="${fs / 7}" stroke-dasharray="${fs} ${fs / 2}"/>`;
+    o += `<text x="${W + pad / 3}" y="${k + fs / 3}" font-size="${fs * 0.9}" fill="#e11d48">K${i + 1}</text>`;
+  });
+  o += `<text x="${W / 2}" y="${-pad / 3}" font-size="${fs * 1.3}" text-anchor="middle" font-weight="bold">W = ${W} mm</text>`;
+  o += `<text transform="translate(${-pad / 3},${L / 2}) rotate(-90)" font-size="${fs * 1.3}" text-anchor="middle" font-weight="bold">L = ${L} mm → feed into slitter</text>`;
+  return o + '</svg>';
+}
+
+function setupsHTML(pos, N, base) {
+  let h = '', start = 0, s = 1;
+  while (start < pos.length) {
+    const chunk = pos.slice(start, start + N), offset = start === 0 ? 0 : pos[start - 1];
+    h += `<div style="margin:4px 0"><b style="display:inline">${pos.length > N ? 'Setup ' + s + ': ' : ''}</b>` +
+      chunk.map((k, i) => `<span class="knife">K${start + i + 1} @ ${f1(k - offset)}</span>`).join('') +
+      (start > 0 ? `<div class="hint">Feed the remaining wide piece; positions from its cut edge (${f1(offset)} mm from ${base}).</div>` : '') + '</div>';
+    start += N; s++;
+  }
+  return h;
+}
+
+function steps(sh, inp) {
+  const kp = sh.knives;
+  let rows = [], y = inp.grip;
+  if (inp.grip > 0) rows.push(`<tr><td>Gripper scrap</td><td class="n">${f1(inp.grip)}</td><td></td></tr>`);
+  sh.groups.forEach(g => { for (let r = 0; r < g.n; r++) {
+    rows.push(`<tr><td>#${g.t.it.no} ${g.t.it.shape === 'rect' ? 'body' : 'end'} strip ${r + 1}</td><td class="n">${f1(g.t.h)}</td><td>→ STEP 2</td></tr>`);
+    y += g.t.h + g.t.gap; } });
+  y -= sh.groups[sh.groups.length - 1].t.gap;
+  rows.push(`<tr><td>Tail scrap</td><td class="n">${f1(sh.L - y)}</td><td></td></tr>`);
+  let h = `<div class="step red"><b>STEP 1 – Cut sheet into strips (${kp.p1.length} knives, positions from gripper edge)</b>
+    ${setupsHTML(kp.p1, inp.knives, 'gripper edge')}
+    <table><tr><th>Strip</th><th class="n">Width</th><th></th></tr>${rows.join('')}</table></div>`;
+  if (kp.p1.length > inp.knives) h += `<div class="warn">Needs ${kp.p1.length} knives but the slitter has ${inp.knives}. Each sheet goes through STEP 1 twice (Setup 1, then Setup 2).</div>`;
+  sh.groups.forEach((g, gi) => {
+    const t = g.t, it = t.it, pos = kp.p2[gi];
+    const what = it.shape === 'rect' ? `${t.per} body blank(s) of ${t.w} × ${t.h} mm` : `${t.per} pieces of ${f1(t.w)} × ${f1(t.h)} mm`;
+    h += `<div class="step ${it.shape === 'rect' ? '' : 'grn'}"><b>STEP 2 – #${it.no} strips (${g.n} per sheet): cut into ${what} (${pos.length} knives, from strip edge)</b>
+      ${setupsHTML(pos, inp.knives, 'strip edge')}
+      <div class="hint">${esc(it.label)} · side scrap ${f1(inp.edge)} + ${f1(sh.W - inp.edge - t.per * t.w - (t.per - 1) * t.gap)} mm
+      ${it.shape === 'circle' ? ` · then PRESS: punch ${blankTxt(it.form, it.bw, it.bh)} from each piece (margin ${f1(it.m)} mm)` : ''}</div>
+      ${t.rot ? `<div class="warn">${it.shape === 'rect' ? 'Body blank' : 'Lid/bottom piece'} rotated 90° – check grain and print direction.</div>` : ''}</div>`;
+    if (pos.length > inp.knives) h += `<div class="warn">#${it.no} strips need ${pos.length} knives (${inp.knives} available), so each strip goes through STEP 2 twice.</div>`;
+  });
+  return h;
+}
+
+function summary(p) {
+  const made = {};
+  p.sheets.forEach(s => s.groups.forEach(g => made[g.t.it.key] = (made[g.t.it.key] || 0) + g.n * g.t.per * s.sheets));
+  $('summary').innerHTML = `<table><tr><th>Sheet</th><th class="n">Size</th><th class="n">Sheets</th><th class="n">Yield</th><th class="n">kg</th></tr>
+    ${p.sheets.map(s => `<tr><td>${s.name}</td><td class="n">${s.W}×${s.L}</td><td class="n">${f0(s.sheets)}</td><td class="n">${f1(s.yield)}%</td><td class="n">${f0(s.kg)}</td></tr>`).join('')}
+    <tr><th>Total</th><th></th><th class="n">${f0(p.total)}</th><th class="n">${f1(p.yield)}%</th><th class="n">${f0(p.kg)}</th></tr></table>
+    <table style="margin-top:10px"><tr><th>Part</th><th>Used for</th><th class="n">Needed</th><th class="n">Produced</th></tr>
+    ${S.items.map(it => `<tr><td>#${it.no} ${it.size}</td><td>${esc(it.label)}</td><td class="n">${f0(it.need)}</td><td class="n">${f0(made[it.key] || 0)}</td></tr>`).join('')}</table>
+    <p class="hint">Needed includes ${S.inp.spoil}% spoilage.</p>`;
+}
+
+/* ================= JOB CARD: print, PDF, download ================= */
+function jobCardHTML() {
+  const p = S.plans[S.active]; if (!p) return '';
+  const inp = S.inp, now = new Date().toLocaleString('en-GB');
+  const jobRows = jobs.map(j => `<tr><td>${esc(j.name)} · height ${j.h}</td><td class="n">${f0(j.qty)}</td><td>${[j.b && 'Body', j.l && 'Lid', j.bt && 'Bottom'].filter(Boolean).join(' + ')}</td></tr>`).join('');
+  let h = `<div class="pc-head"><h1>SFS Industries – Sheet Layout Job Card</h1>
+    <div class="mono" style="font-size:12px">${now} · ${p.title} · <b>${f0(p.total)} sheets</b> · gauge ${inp.gauge} mm · spoilage ${inp.spoil}%</div></div>
+    <table><tr><th>Mold · height</th><th class="n">Qty</th><th>Parts</th></tr>${jobRows}</table>
+    <div style="margin-top:10px">${$('summary').innerHTML}</div>
+    <p class="hint">Gripper ${inp.grip} mm · edge margin ${inp.edge} mm · ${inp.knives} knives, min spacing ${inp.minStrip} mm.</p>`;
+  p.sheets.forEach((sh, i) => {
+    const per = sh.groups.map(g => `${g.n * g.t.per} × #${g.t.it.no}`).join(' + ');
+    const legend = sh.groups.map(g => `<span><i style="background:${g.t.it.col[0]};border-color:${g.t.it.col[1]}"></i>#${g.t.it.no} ${esc(g.t.it.label)} (${g.t.it.size})</span>`).join('');
+    h += `<div class="pc-sheet"><div class="pc-head"><h1>Sheet ${i + 1} of ${p.sheets.length}: ${sh.name}</h1>
+      <div class="mono" style="font-size:13px">${sh.W} × ${sh.L} mm · <b>${f0(sh.sheets)} sheets</b> · per sheet: ${per} · yield ${f1(sh.yield)}%</div></div>
+      ${drawSheet(sh, inp)}<div class="legend">${legend}</div>${steps(sh, inp)}</div>`;
+  });
+  return h;
+}
+$('bPrint').onclick = () => { $('printArea').innerHTML = jobCardHTML(); window.print(); };
+$('bCard').onclick = () => {
+  const css = document.querySelector('style').textContent;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Sheet job card</title><style>${css} #printArea{display:block!important;padding:12px;background:#fff}</style></head>
+    <body><div id="printArea">${jobCardHTML()}</div><p style="text-align:center"><button onclick="print()" style="padding:10px 20px">Print / Save PDF</button></p></body></html>`;
+  download(`sheet_job_card_${new Date().toISOString().slice(0, 10)}.html`, html, 'text/html');
+};
+$('bPng').onclick = () => {
+  const p = S.plans[S.active]; if (!p) return;
+  const sh = p.sheets[S.tab], svg = drawSheet(sh, S.inp).replace('<svg ', '<svg width="2000" height="' + Math.round(2000 * (sh.L + 0.126 * Math.max(sh.W, sh.L)) / (sh.W + 0.126 * Math.max(sh.W, sh.L))) + '" ');
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0);
+    c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+      a.download = `layout_${sh.name.replace(/\W+/g, '_')}_${sh.W}x${sh.L}.png`; a.click(); });
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+};
+
+$('bCsv').onclick = () => {
+  const p = S.plans[S.active]; if (!p) return;
+  const L = [['Plan', 'Sheet', 'W mm', 'L mm', 'Sheets', 'Yield %', 'kg', 'Parts per sheet', 'Step1 knives (mm from gripper edge)', 'Step2 knives (mm from strip edge)']];
+  p.sheets.forEach(s => L.push([p.title, s.name, s.W, s.L, s.sheets, s.yield.toFixed(1), s.kg.toFixed(0),
+    s.groups.map(g => `${g.n * g.t.per}x #${g.t.it.no} ${g.t.it.size}`).join(' + '), s.knives.p1.join(' / '),
+    s.groups.map((g, i) => `#${g.t.it.no}: ` + s.knives.p2[i].join(' / ')).join(' | ')]));
+  L.push([]); L.push(['Part', 'Size', 'Used for', 'Needed']);
+  S.items.forEach(it => L.push(['#' + it.no, it.size, it.label, it.need]));
+  download(`sheet_plan.csv`, L.map(r => r.map(c => `"${c}"`).join(',')).join('\n'), 'text/csv');
+};
+document.querySelectorAll('aside .card:nth-child(3) input, aside .card:nth-child(4) input, #spoil, #gauge, #hAllow').forEach(el => el.addEventListener('input', run));
+// keep job lines valid if a can was renamed/deleted
+jobs = jobs.filter(j => products.some(p => p.name === j.name));
+if (!jobs.length) jobs = [newJob((products.find(p => p.name === '200 Round') || products[0]).name, 10000)];
+fillProdSel(0);
+run();
+</script>
+</body>
+</html>
